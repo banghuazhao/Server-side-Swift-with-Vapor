@@ -5,6 +5,6 @@ This repo contains all the downloadable materials and projects associated with t
 This fork is based on the original repository at [kodecocodes/vpr-materials](https://github.com/kodecocodes/vpr-materials), and has been updated to utilize Swift Concurrency for improved performance and cleaner asynchronous code.
 
 ## Environment:
-iOS: >= 13.0
-Swift: >= 5.0
-Vapor: >= 4.0
+* iOS: >= 13.0
+* Swift: >= 5.0
+* Vapor: >= 4.0
