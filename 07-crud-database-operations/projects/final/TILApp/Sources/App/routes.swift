@@ -30,68 +30,71 @@ import Fluent
 import Vapor
 
 func routes(_ app: Application) throws {
-  app.get { req in
-    return "It works!"
-  }
-  
-  app.get("hello") { req -> String in
-    return "Hello, world!"
-  }
-  
-  app.post("api", "acronyms") { req -> EventLoopFuture<Acronym> in
-    let acronym = try req.content.decode(Acronym.self)
-    return acronym.save(on: req.db).map { acronym }
-  }
-  
-  app.get("api", "acronyms") { req -> EventLoopFuture<[Acronym]> in
-    Acronym.query(on: req.db).all()
-  }
-  
-  app.get("api", "acronyms", ":acronymID") { req -> EventLoopFuture<Acronym> in
-    Acronym.find(req.parameters.get("acronymID"), on: req.db)
-      .unwrap(or: Abort(.notFound))
-  }
-  
-  app.put("api", "acronyms", ":acronymID") { req -> EventLoopFuture<Acronym> in
-    let updatedAcronym = try req.content.decode(Acronym.self)
-    return Acronym.find(req.parameters.get("acronymID"), on: req.db)
-      .unwrap(or: Abort(.notFound)).flatMap { acronym in
+    app.get { _ in
+        "It works!"
+    }
+
+    app.get("hello") { _ -> String in
+        "Hello, world!"
+    }
+
+    app.post("api", "acronyms") { req async throws -> Acronym in
+        let acronym = try req.content.decode(Acronym.self)
+        try await acronym.save(on: req.db)
+        return acronym
+    }
+
+    app.get("api", "acronyms") { req async throws -> [Acronym] in
+        try await Acronym.query(on: req.db).all()
+    }
+
+    app.get("api", "acronyms", ":acronymID") { req async throws -> Acronym in
+        guard let acronym = try await Acronym.find(req.parameters.get("acronymID"), on: req.db) else {
+            throw Abort(.notFound)
+        }
+        return acronym
+    }
+
+    app.put("api", "acronyms", ":acronymID") { req async throws -> Acronym in
+        let updatedAcronym = try req.content.decode(Acronym.self)
+        guard let acronym = try await Acronym.find(req.parameters.get("acronymID"), on: req.db) else {
+            throw Abort(.notFound)
+        }
         acronym.short = updatedAcronym.short
         acronym.long = updatedAcronym.long
-        return acronym.save(on: req.db).map {
-          acronym
+        try await acronym.save(on: req.db)
+        return acronym
+    }
+
+    app.delete("api", "acronyms", ":acronymID") { req async throws -> HTTPStatus in
+        guard let acronym = try await Acronym.find(req.parameters.get("acronymID"), on: req.db) else {
+            throw Abort(.notFound)
         }
+        try await acronym.delete(on: req.db)
+        return .noContent
     }
-  }
-  
-  app.delete("api", "acronyms", ":acronymID") { req -> EventLoopFuture<HTTPStatus> in
-    Acronym.find(req.parameters.get("acronymID"), on: req.db)
-      .unwrap(or: Abort(.notFound))
-      .flatMap { acronym in
-        acronym.delete(on: req.db)
-          .transform(to: .noContent)
+
+    app.get("api", "acronyms", "search") { req async throws -> [Acronym] in
+        guard let searchTerm = req.query[String.self, at: "term"] else {
+            throw Abort(.badRequest)
+        }
+
+        return try await Acronym.query(on: req.db).group(.or) { or in
+            or.filter(\.$short == searchTerm)
+            or.filter(\.$long == searchTerm)
+        }.all()
     }
-  }
-  
-  app.get("api", "acronyms", "search") { req -> EventLoopFuture<[Acronym]> in
-    guard let searchTerm = req.query[String.self, at: "term"] else {
-      throw Abort(.badRequest)
+
+    app.get("api", "acronyms", "first") { req async throws -> Acronym in
+        guard let acronym = try await Acronym.query(on: req.db).first() else {
+            throw Abort(.notFound)
+        }
+        return acronym
     }
-    return Acronym.query(on: req.db).group(.or) { or in
-      or.filter(\.$short == searchTerm)
-      or.filter(\.$long == searchTerm)
-    }.all()
-  }
-  
-  app.get("api", "acronyms", "first") { req -> EventLoopFuture<Acronym> in
-    Acronym.query(on: req.db)
-      .first()
-      .unwrap(or: Abort(.notFound))
-  }
-  
-  app.get("api", "acronyms", "sorted") { req -> EventLoopFuture<[Acronym]> in
-    Acronym.query(on: req.db)
-      .sort(\.$short, .ascending)
-      .all()
-  }
+
+    app.get("api", "acronyms", "sorted") { req async throws -> [Acronym] in
+        try await Acronym.query(on: req.db)
+            .sort(\.$short, .ascending)
+            .all()
+    }
 }
