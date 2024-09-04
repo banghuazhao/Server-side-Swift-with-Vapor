@@ -30,16 +30,17 @@ import Fluent
 import Vapor
 
 func routes(_ app: Application) throws {
-  app.get { req in
-    return "It works!"
-  }
-  
-  app.get("hello") { req -> String in
-    return "Hello, world!"
-  }
-  
-  app.post("api", "acronyms") { req -> EventLoopFuture<Acronym> in
-    let acronym = try req.content.decode(Acronym.self)
-    return acronym.save(on: req.db).map { acronym }
-  }
+    app.get { _ in
+        "It works!"
+    }
+
+    app.get("hello") { _ -> String in
+        "Hello, world!"
+    }
+
+    app.post("api", "acronyms") { req async throws -> Acronym in
+        let acronym = try req.content.decode(Acronym.self)
+        try await acronym.save(on: req.db)
+        return acronym
+    }
 }
