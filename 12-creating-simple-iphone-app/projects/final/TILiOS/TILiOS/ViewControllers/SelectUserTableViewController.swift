@@ -92,7 +92,7 @@ extension SelectUserTableViewController {
     let user = users[indexPath.row]
     let cell = tableView.dequeueReusableCell(withIdentifier: "SelectUserCell", for: indexPath)
     cell.textLabel?.text = user.name
-    if user.name == selectedUser.name {
+    if user.id == selectedUser.id {
       cell.accessoryType = .checkmark
     } else {
       cell.accessoryType = .none
